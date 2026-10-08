@@ -1,0 +1,22 @@
+{
+  "name": "gold-chart-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gold (XAUUSD) chart-analysis assistant: CHoCH + BOS + FVG strategy, multi-timeframe bias, liquidity, FVG/IFVG and confluence scoring.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p . && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^6.4.4",
+    "vitest": "^3.2.7"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.2.1"
+  }
+}

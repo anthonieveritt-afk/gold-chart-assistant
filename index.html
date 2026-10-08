@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1115" />
+  <title>Gold Chart Assistant – CHoCH + BOS + FVG</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%230f1115'/><path d='M10 46h44l-8-14H18z' fill='%23ffd54f'/><path d='M18 30h28l-6-10H24z' fill='%23ffb300'/></svg>" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="logo">Au</span><div><h1>Gold Chart Assistant</h1><small id="source">loading…</small></div></div>
+    <div class="top-right"><span id="updated" class="muted"></span><button id="refresh" title="Refresh now">⟳</button><button id="settingsBtn" title="Settings">⚙</button></div>
+  </header>
+  <div class="disclaimer">Analysis aid, not financial advice. Signals are generated automatically from price structure and can be wrong – always manage your own risk.</div>
+  <nav class="tfs" id="tfs"></nav>
+  <div class="toggles" id="toggles"></div>
+  <div id="chartWrap"><div id="chart"></div><div id="chartMsg" class="chart-msg"></div></div>
+  <div class="legend">
+    <span><i class="sw strat"></i>Strategy FVG</span><span><i class="sw bullz"></i>Bull FVG</span><span><i class="sw bearz"></i>Bear FVG</span>
+    <span><i class="ln dashed"></i>IFVG dashed</span><span><i class="ln buy"></i>Buy-side liq.</span><span><i class="ln sell"></i>Sell-side liq.</span>
+    <span><i class="ln key"></i>PDH/PDL/PWH/PWL/Asia</span><span><i class="ln entry"></i>Entry</span><span><i class="ln sl"></i>SL</span><span><i class="ln tp"></i>TP</span>
+  </div>
+  <main id="dash" class="dash"></main>
+  <footer class="foot">
+    <p><b>Analysis aid, not financial advice.</b> <span id="footSource"></span></p>
+    <p>Strategy: CHoCH → BOS → FVG (in that order), entry on the FVG retest at 50% (CE). Breaks use candle closes. Times are UK (Europe/London).</p>
+  </footer>
+  <dialog id="settings">
+    <form method="dialog" id="settingsForm">
+      <h2>Settings</h2>
+      <fieldset><legend>Data source</legend>
+        <label><input type="radio" name="source" value="binance" /> PAXG/USDT via Binance (no key, tracks spot gold)</label>
+        <label><input type="radio" name="source" value="twelvedata" /> XAU/USD via Twelve Data (free API key)</label>
+        <label class="block">Twelve Data API key <input type="password" name="apiKey" autocomplete="off" placeholder="stored only in this browser" /></label>
+        <small class="muted">Free plan: 8 requests/min, 800/day. The app refreshes the selected timeframe about every 2 minutes and the others every 5–60 minutes, and pauses while the tab is hidden.</small>
+      </fieldset>
+      <fieldset><legend>Strategy</legend>
+        <label class="block">Swing lookback (bars each side) <input type="number" name="swingLookback" min="2" max="15" step="1" /></label>
+        <label class="block">SL buffer (× ATR14) <input type="number" name="slAtrMult" min="0" max="2" step="0.05" /></label>
+        <label class="block">Minimum TP1 R:R <input type="number" name="minRR" min="0" max="10" step="0.1" /></label>
+        <label class="block">Min FVG size (× ATR14) <input type="number" name="fvgMinAtr" min="0" max="2" step="0.05" /></label>
+        <label class="block">Setup freshness (bars) <input type="number" name="setupMaxAgeBars" min="5" max="500" step="5" /></label>
+      </fieldset>
+      <menu><button value="cancel" type="button" id="settingsCancel">Cancel</button><button value="save" id="settingsSave" class="primary">Save</button></menu>
+    </form>
+  </dialog>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
