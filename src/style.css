@@ -14,6 +14,12 @@ button:hover { border-color: #3a4256; }
 #refresh.spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .disclaimer { background: #2a2310; color: #ffe08a; font-size: 12px; padding: 6px 14px; border-bottom: 1px solid #3d3416; }
+.srcbar { display: flex; align-items: center; gap: 6px; padding: 8px 14px 0; overflow-x: auto; scrollbar-width: none; font-size: 12.5px; }
+.srcbar button { white-space: nowrap; font-size: 12.5px; padding: 5px 10px; border-radius: 999px; }
+.srcbar button.on { background: #3a2f0b; border-color: var(--gold); color: var(--gold); font-weight: 700; }
+.status { padding: 6px 14px 0; font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.status:empty { display: none; }
+.status .ok { color: #69f0ae; } .status .warn-t { color: #ffd180; } .status .err-t { color: #ff8a80; }
 .tfs, .toggles { display: flex; gap: 6px; padding: 8px 14px 0; overflow-x: auto; scrollbar-width: none; }
 .tfs button { min-width: 52px; font-weight: 600; }
 .tfs button.on { background: var(--gold); color: #1d1600; border-color: var(--gold); }
@@ -89,6 +95,6 @@ menu { display: flex; justify-content: flex-end; gap: 8px; padding: 0; } .primar
 @media (max-width: 760px) {
   .dash { grid-template-columns: 1fr; padding: 8px 8px 14px; } .dash .col:nth-child(2) { order: -1; grid-row: auto; }
   #chartWrap { margin: 8px 8px 0; } #chart { height: 52vh; min-height: 320px; }
-  .tfs, .toggles { padding-left: 8px; padding-right: 8px; } .legend { padding: 6px 8px; }
+  .tfs, .toggles, .srcbar, .status { padding-left: 8px; padding-right: 8px; } .legend { padding: 6px 8px; }
   .top-right #updated { display: none; } .steps { grid-template-columns: repeat(2, 1fr); }
 }

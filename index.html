@@ -13,6 +13,8 @@
     <div class="top-right"><span id="updated" class="muted"></span><button id="refresh" title="Refresh now">⟳</button><button id="settingsBtn" title="Settings">⚙</button></div>
   </header>
   <div class="disclaimer">Analysis aid, not financial advice. Signals are generated automatically from price structure and can be wrong – always manage your own risk.</div>
+  <div class="srcbar" id="srcbar"></div>
+  <div class="status" id="status"></div>
   <nav class="tfs" id="tfs"></nav>
   <div class="toggles" id="toggles"></div>
   <div id="chartWrap"><div id="chart"></div><div id="chartMsg" class="chart-msg"></div></div>
@@ -30,10 +32,11 @@
     <form method="dialog" id="settingsForm">
       <h2>Settings</h2>
       <fieldset><legend>Data source</legend>
-        <label><input type="radio" name="source" value="binance" /> PAXG/USDT via Binance (no key, tracks spot gold)</label>
-        <label><input type="radio" name="source" value="twelvedata" /> XAU/USD via Twelve Data (free API key)</label>
+        <label><input type="radio" name="source" value="xau" /> <b>XAU/USD spot gold</b> – live, no key needed (recommended)</label>
+        <label><input type="radio" name="source" value="binance" /> PAXG/USDT gold token via Binance (no key, trades 24/7)</label>
+        <label><input type="radio" name="source" value="twelvedata" /> XAU/USD via Twelve Data (needs a free API key)</label>
         <label class="block">Twelve Data API key <input type="password" name="apiKey" autocomplete="off" placeholder="stored only in this browser" /></label>
-        <small class="muted">Free plan: 8 requests/min, 800/day. The app refreshes the selected timeframe about every 2 minutes and the others every 5–60 minutes, and pauses while the tab is hidden.</small>
+        <small class="muted">Twelve Data is optional – the default XAU/USD feed needs no key. If a feed fails the app switches to a backup automatically and tells you. Twelve Data free plan: 8 requests/min, 800/day. The app refreshes the selected timeframe about every 2 minutes and the others every 5–60 minutes, and pauses while the tab is hidden.</small>
       </fieldset>
       <fieldset><legend>Strategy</legend>
         <label class="block">Swing lookback (bars each side) <input type="number" name="swingLookback" min="2" max="15" step="1" /></label>

@@ -17,7 +17,9 @@ Static, client-side gold (XAUUSD) chart-analysis tool built around one strategy:
 
 ## Data
 
-* Default (no key): Binance public klines **PAXG/USDT** – PAX Gold, a gold-backed token (1 token = 1 troy oz) that tracks spot gold. Served from `data-api.binance.vision` (fallback `api.binance.com`), CORS enabled.
+* **Default (no key): real XAU/USD spot gold** – the Binance `XAUUSDT` *index price* (`fapi.binance.com/fapi/v1/indexPriceKlines`), a weighted composite of spot gold feeds (dxFeed, Kaiko, Pyth Pro, Massive). It is quoted in USDT, so it is converted to USD with the live USDT/USD rate (Coinbase, Kraken backup). Weekend-close and daily-break bars (NY 17:00–18:00) are removed so candles look like a normal XAU/USD chart. Backup: Bybit's XAUUSDT index. The index only starts in Dec 2025, so 1W/1D history before that is extended with PAXG. If every XAU feed fails, the app falls back to PAXG automatically and shows a warning.
+* The data source is switched with the **Data:** buttons above the timeframes and is remembered in the browser.
+* Alternative (no key): Binance public klines **PAXG/USDT** – PAX Gold, a gold-backed token (1 token = 1 troy oz) that tracks spot gold. Served from `data-api.binance.vision` (fallback `api.binance.com`), CORS enabled.
 * Optional: Twelve Data **XAU/USD** with your own free API key (Settings ⚙, stored only in your browser's localStorage). Refreshes are throttled to fit the free plan (8/min, 800/day).
 
 ## Development
