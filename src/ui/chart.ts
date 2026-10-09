@@ -26,7 +26,12 @@ export class GoldChart {
   private markers: ISeriesMarkersPluginApi<Time>;
   private priceLines: IPriceLine[] = [];
   private lastKey = '';
+  /** price lines with their full / compact titles, for de-cluttering the right axis */
+  private planLines: { line: IPriceLine; price: number; full: string; short: string; prio: number }[] = [];
+  private lastPrice = NaN;
+  private declutterQueued = false;
   slAtrMult = 0.25;
+  private get compact() { return window.innerWidth < 760; }
 
   constructor(el: HTMLElement) {
     this.chart = createChart(el, {
@@ -44,10 +49,40 @@ export class GoldChart {
     this.series = this.chart.addSeries(CandlestickSeries, {
       upColor: C.bull, downColor: C.bear, borderUpColor: C.bull, borderDownColor: C.bear, wickUpColor: C.bull, wickDownColor: C.bear,
     });
-    this.ema50 = this.chart.addSeries(LineSeries, { color: '#90caf9', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, title: 'EMA50' });
-    this.ema200 = this.chart.addSeries(LineSeries, { color: '#f48fb1', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, title: 'EMA200' });
+    const small = window.innerWidth < 760;
+    this.ema50 = this.chart.addSeries(LineSeries, { color: '#90caf9', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, title: small ? '' : 'EMA50' });
+    this.ema200 = this.chart.addSeries(LineSeries, { color: '#f48fb1', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, title: small ? '' : 'EMA200' });
     this.series.attachPrimitive(this.overlay);
     this.markers = createSeriesMarkers(this.series, []);
+    const q = () => this.queueDeclutter();
+    this.chart.timeScale().subscribeVisibleLogicalRangeChange(q);
+    window.addEventListener('resize', q);
+    el.addEventListener('touchend', q, { passive: true });
+    el.addEventListener('wheel', q, { passive: true });
+  }
+
+  private queueDeclutter() {
+    if (this.declutterQueued) return;
+    this.declutterQueued = true;
+    requestAnimationFrame(() => requestAnimationFrame(() => { this.declutterQueued = false; this.declutter(); }));
+  }
+
+  /**
+   * Right-axis labels: keep the live price label clear and never let plan labels overlap.
+   * Higher-priority lines (Entry, SL, TP1, …) keep their axis label; a label that would collide with
+   * the current price or an already placed label is hidden (the line stays, with a short title).
+   */
+  private declutter() {
+    const MIN_GAP = 17;
+    const taken: number[] = [];
+    const pc = this.series.priceToCoordinate(this.lastPrice);
+    if (pc !== null) taken.push(pc);
+    for (const p of [...this.planLines].sort((a, b) => a.prio - b.prio)) {
+      const y = this.series.priceToCoordinate(p.price);
+      const clash = y === null || taken.some((t) => Math.abs(t - y) < MIN_GAP);
+      if (!clash) taken.push(y!);
+      p.line.applyOptions({ axisLabelVisible: !clash, title: this.compact ? (clash ? '' : p.short) : p.full });
+    }
   }
 
   update(A: TfAnalysis, m: MarketAnalysis, tg: Toggles, selected: SetupView | null) {
@@ -75,11 +110,15 @@ export class GoldChart {
     const recentFrom = A.candles[Math.max(0, n - 400)]?.time ?? 0;
     const stratFvgId = selected?.tf === A.tf ? selected.setup.fvg?.id : undefined;
 
-    // FVG / IFVG boxes (active zones only, plus the strategy FVG)
+    // FVG / IFVG boxes (active zones only, nearest to price, plus the strategy FVG)
+    const fvgFrom = A.candles[Math.max(0, n - (this.compact ? 150 : 400))]?.time ?? 0;
+    const maxZones = this.compact ? 5 : 10;
+    const mid = (f: { top: number; bottom: number }) => (f.top + f.bottom) / 2;
+    const shownFvg = new Set(A.fvgs.filter((f) => activeZones([f]).length > 0 && f.time >= fvgFrom)
+      .sort((x, y) => Math.abs(mid(x) - m.price) - Math.abs(mid(y) - m.price)).slice(0, maxZones).map((f) => f.id));
     for (const f of A.fvgs) {
       const isStrat = f.id === stratFvgId;
-      const alive = activeZones([f]).length > 0;
-      if (!isStrat && (!alive || f.time < recentFrom)) continue;
+      if (!isStrat && !shownFvg.has(f.id)) continue;
       const pol = polarityAt(f);
       const inverted = f.invertedIndex !== null;
       if (!isStrat && inverted && !tg.ifvg) continue;
@@ -100,12 +139,13 @@ export class GoldChart {
     if (tg.liquidity) {
       const price = m.price;
       const unswept = A.liquidity.filter((l) => l.sweptTime === null && l.time >= recentFrom);
-      const above = unswept.filter((l) => l.price > price).sort((a, b) => a.price - b.price).slice(0, 4);
-      const below = unswept.filter((l) => l.price < price).sort((a, b) => b.price - a.price).slice(0, 4);
+      const k = this.compact ? 2 : 4;
+      const above = unswept.filter((l) => l.price > price).sort((a, b) => a.price - b.price).slice(0, k);
+      const below = unswept.filter((l) => l.price < price).sort((a, b) => b.price - a.price).slice(0, k);
       for (const l of [...above, ...below]) {
         lines.push({ t1: l.time, t2: null, price: l.price, color: l.side === 'buy' ? C.liqBuy : C.liqSell, dash: l.kind === 'equal' ? undefined : [6, 4], label: `${l.kind === 'equal' ? (l.side === 'buy' ? 'EQH' : 'EQL') : l.side === 'buy' ? 'BSL' : 'SSL'} ${fmtPrice(l.price)}`, labelAlign: 'right' });
       }
-      const recentSwept = A.liquidity.filter((l) => l.sweptTime !== null && l.sweptTime >= (A.candles[Math.max(0, n - 120)]?.time ?? 0)).slice(-6);
+      const recentSwept = this.compact ? [] : A.liquidity.filter((l) => l.sweptTime !== null && l.sweptTime >= (A.candles[Math.max(0, n - 120)]?.time ?? 0)).slice(-6);
       for (const l of recentSwept) {
         lines.push({ t1: l.time, t2: l.sweptTime, price: l.price, color: 'rgba(160,160,160,0.6)', dash: [2, 3], label: `${l.side === 'buy' ? 'BSL' : 'SSL'} swept ✕`, labelAlign: 'right' });
       }
@@ -131,6 +171,8 @@ export class GoldChart {
     }
     for (const p of this.priceLines) this.series.removePriceLine(p);
     this.priceLines = [];
+    this.planLines = [];
+    this.lastPrice = bars.length ? bars[bars.length - 1].close : NaN;
     if (tg.plan && selected && selected.tf === A.tf) {
       const s = selected.setup;
       const up = s.direction === 'bullish';
@@ -139,18 +181,26 @@ export class GoldChart {
       if (s.triggerTime) mk.push({ time: s.triggerTime as UTCTimestamp, position: up ? 'belowBar' : 'aboveBar', shape: up ? 'arrowUp' : 'arrowDown', color: C.entry, text: up ? 'ENTRY (long)' : 'ENTRY (short)', size: 2 });
       const r = s.risk;
       if (r) {
-        const add = (price: number, color: string, title: string, style: LineStyle = LineStyle.Solid, width: 1 | 2 | 3 = 2) =>
-          this.priceLines.push(this.series.createPriceLine({ price, color, title, lineStyle: style, lineWidth: width, axisLabelVisible: true }));
-        add(r.entry, C.entry, `ENTRY (CE) ${fmtPrice(r.entry)}`);
-        add(r.stop, C.sl, `SL ${fmtPrice(r.stop)} (−${fmtPrice(r.risk)})`, LineStyle.Solid, 2);
-        r.targets.forEach((t) => add(t.price, C.tp, `${t.name} ${fmtPrice(t.price)} (${t.rr.toFixed(1)}R)`, t.name === 'TP1' ? LineStyle.Solid : LineStyle.Dashed, t.name === 'TP1' ? 2 : 1));
+        const add = (price: number, color: string, full: string, short: string, prio: number, style: LineStyle = LineStyle.Solid, width: 1 | 2 | 3 = 2) => {
+          const line = this.series.createPriceLine({ price, color, title: this.compact ? short : full, lineStyle: style, lineWidth: width, axisLabelVisible: true });
+          this.priceLines.push(line);
+          this.planLines.push({ line, price, full, short, prio });
+        };
+        add(r.entry, C.entry, `ENTRY (CE) ${fmtPrice(r.entry)}`, 'Entry', 0);
+        add(r.stop, C.sl, `SL ${fmtPrice(r.stop)} (−${fmtPrice(r.risk)})`, 'SL', 1, LineStyle.Solid, 2);
+        r.targets.forEach((t, i) => add(t.price, C.tp, `${t.name} ${fmtPrice(t.price)} (${t.rr.toFixed(1)}R)`, `${t.name} ${t.rr.toFixed(1)}R`, 2 + i, t.name === 'TP1' ? LineStyle.Solid : LineStyle.Dashed, t.name === 'TP1' ? 2 : 1));
       } else {
         const buf = (A.atr[A.atr.length - 1] ?? 0) * this.slAtrMult;
-        this.priceLines.push(this.series.createPriceLine({ price: up ? s.originPrice - buf : s.originPrice + buf, color: C.sl, title: 'Invalidation (provisional SL)', lineStyle: LineStyle.Dotted, lineWidth: 1, axisLabelVisible: true }));
+        const price = up ? s.originPrice - buf : s.originPrice + buf;
+        const full = 'Invalidation (provisional SL)';
+        const line = this.series.createPriceLine({ price, color: C.sl, title: this.compact ? 'Invalid.' : full, lineStyle: LineStyle.Dotted, lineWidth: 1, axisLabelVisible: true });
+        this.priceLines.push(line);
+        this.planLines.push({ line, price, full, short: 'Invalid.', prio: 1 });
       }
     }
     mk.sort((a, b) => (a.time as number) - (b.time as number));
     this.markers.setMarkers(mk);
     this.overlay.setData(rects, lines, times);
+    this.queueDeclutter();
   }
 }

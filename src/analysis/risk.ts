@@ -28,6 +28,8 @@ export interface RiskInput {
   tp2Candidates: TargetCandidate[];
   /** TP3 (optional): next major swing */
   tp3Candidates: TargetCandidate[];
+  /** every target must be at or beyond this price (the leg extreme already traded: liquidity inside the leg is gone) */
+  minTarget?: number | null;
 }
 export interface RiskPlan {
   direction: Direction;
@@ -74,7 +76,11 @@ export function buildRiskPlan(inp: RiskInput): RiskPlan {
     rr: risk > 0 ? (s * (t.price - entry)) / risk : 0,
   });
   const targets: RiskTarget[] = [];
-  const tp1c = nearestBeyond(inp.tp1Candidates, farEdge) ?? { price: entry + s * 2 * risk, label: '2R measured move (no opposing liquidity found)' };
+  const floor = inp.minTarget != null && isFinite(inp.minTarget) && s * (inp.minTarget - farEdge) > 0 ? inp.minTarget : null;
+  const tp1List = floor === null ? inp.tp1Candidates : inp.tp1Candidates.filter((t) => s * (t.price - floor) >= -1e-9);
+  const measured = entry + s * 2 * risk;
+  const tp1c = nearestBeyond(tp1List, farEdge)
+    ?? (floor !== null && s * (floor - measured) > 0 ? { price: floor, label: 'Leg extreme (buy/sell-side liquidity)' } : { price: measured, label: '2R measured move (no opposing liquidity found)' });
   const tp1 = mk('TP1', tp1c);
   targets.push(tp1);
   const tp2c = nearestBeyond(inp.tp2Candidates, tp1.price) ?? nearestBeyond(inp.tp1Candidates, tp1.price);

@@ -39,7 +39,8 @@
         <small class="muted">Twelve Data is optional – the default XAU/USD feed needs no key. If a feed fails the app switches to a backup automatically and tells you. Twelve Data free plan: 8 requests/min, 800/day. The app refreshes the selected timeframe about every 2 minutes and the others every 5–60 minutes, and pauses while the tab is hidden.</small>
       </fieldset>
       <fieldset><legend>Strategy</legend>
-        <label class="block">Swing lookback (bars each side) <input type="number" name="swingLookback" min="2" max="15" step="1" /></label>
+        <label class="block">Swing lookback, 15M and above (bars each side) <input type="number" name="swingLookback" min="2" max="15" step="1" /></label>
+        <label class="block">Swing lookback for 5M / 3M / 1M <input type="number" name="ltfSwingLookback" min="1" max="15" step="1" /></label>
         <label class="block">SL buffer (× ATR14) <input type="number" name="slAtrMult" min="0" max="2" step="0.05" /></label>
         <label class="block">Minimum TP1 R:R <input type="number" name="minRR" min="0" max="10" step="0.1" /></label>
         <label class="block">Min FVG size (× ATR14) <input type="number" name="fvgMinAtr" min="0" max="2" step="0.05" /></label>

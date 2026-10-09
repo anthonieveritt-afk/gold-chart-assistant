@@ -1,5 +1,5 @@
 import type { AnalysisConfig, Bias, Candle, Fvg, LiquidityLevel, StructureResult, Swing, Timeframe } from './types';
-import { higherTimeframes, TF_LABEL, TIMEFRAMES } from './types';
+import { higherTimeframes, isLowTf, TF_LABEL, TIMEFRAMES } from './types';
 import { atr } from './util';
 import { findSwings } from './swings';
 import { analyseStructure } from './structure';
@@ -43,7 +43,8 @@ export interface MarketAnalysis {
   price: number;
 }
 
-export const TF_WEIGHT: Record<Timeframe, number> = { '1w': 3, '1d': 3, '4h': 2, '1h': 2, '15m': 1, '5m': 0.5 };
+/** 3M/1M are shown but don't move the overall direction score */
+export const TF_WEIGHT: Record<Timeframe, number> = { '1w': 3, '1d': 3, '4h': 2, '1h': 2, '15m': 1, '5m': 0.5, '3m': 0, '1m': 0 };
 
 export function analyseMarket(data: Partial<Record<Timeframe, TfData>>, cfg: AnalysisConfig, nowSec: number): MarketAnalysis {
   const byTf: Partial<Record<Timeframe, TfAnalysis>> = {};
@@ -56,7 +57,7 @@ export function analyseMarket(data: Partial<Record<Timeframe, TfData>>, cfg: Ana
     if (!d || d.candles.length < 20) continue;
     const c = d.candles;
     const a = atr(c);
-    const swings = findSwings(c, cfg.swingLookback);
+    const swings = findSwings(c, isLowTf(tf) ? cfg.ltfSwingLookback : cfg.swingLookback);
     const structure = analyseStructure(c, swings);
     const fvgs = detectFvgs(c, a, cfg.fvgMinAtr);
     const liquidity = swingLiquidity(c, swings, a[a.length - 1], cfg.eqTolAtr).map((l) => ({ ...l, tf }));
@@ -128,7 +129,7 @@ export function analyseMarket(data: Partial<Record<Timeframe, TfData>>, cfg: Ana
   const reasons: string[] = [];
   for (const tf of TIMEFRAMES) {
     const A = byTf[tf];
-    if (!A) continue;
+    if (!A || !TF_WEIGHT[tf]) continue;
     const v = A.bias.bias === 'bullish' ? 1 : A.bias.bias === 'bearish' ? -1 : 0;
     num += v * TF_WEIGHT[tf];
     den += TF_WEIGHT[tf];

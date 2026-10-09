@@ -37,7 +37,7 @@ export function setupCard(v: SetupView, selectedId: string | null, slAtrMult: nu
       <tr class="entry"><th>Entry</th><td class="num">${fmtPrice(r.entry)}</td><td colspan="3">CE (50%) of zone ${fmtPrice(r.zoneBottom)}–${fmtPrice(r.zoneTop)}</td></tr>
       <tr class="sl"><th>SL</th><td class="num">${fmtPrice(r.stop)}</td><td class="num">${up ? '−' : '+'}${fmtPrice(r.risk)} <small>(${fmtPct(r.riskPct)})</small></td><td class="num">1R</td><td class="src">${esc(r.stopReason)} ${fmtPrice(r.stopBase)} ${up ? '−' : '+'} ${fmtPrice(r.buffer)} buffer</td></tr>
       ${rows}
-    </table>${r.warning ? `<div class="warning">⚠ ${esc(r.warning)}</div>` : ''}`;
+    </table>${s.note ? `<div class="warning">⚠ ${esc(s.note)}</div>` : ''}${r.warning ? `<div class="warning">⚠ ${esc(r.warning)}</div>` : ''}`;
   } else {
     const buf = atrNow * slAtrMult;
     const inv = up ? s.originPrice - buf : s.originPrice + buf;

@@ -66,3 +66,18 @@ describe('SL / TP calculation', () => {
     expect(r.targets[1]).toMatchObject({ name: 'TP2', price: 185 });
   });
 });
+
+describe('minTarget (leg extreme already traded)', () => {
+  it('ignores TP1 candidates inside the leg and falls back to the leg extreme', () => {
+    const r = buildRiskPlan({ ...base, direction: 'bullish', zoneTop: 102, zoneBottom: 100, originPrice: 95, minTarget: 118,
+      tp1Candidates: [{ price: 110, label: 'swept inside leg' }] });
+    expect(r.targets[0].price).toBe(118);
+    expect(r.targets[0].rr).toBeGreaterThan(0);
+  });
+  it('bearish: targets at or below the leg low only', () => {
+    const r = buildRiskPlan({ ...base, direction: 'bearish', zoneTop: 100, zoneBottom: 98, originPrice: 105, minTarget: 80,
+      tp1Candidates: [{ price: 90, label: 'inside' }, { price: 78, label: 'beyond' }] });
+    expect(r.targets[0].price).toBe(78);
+    expect(r.targets[0].rr).toBeGreaterThan(0);
+  });
+});

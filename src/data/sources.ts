@@ -127,7 +127,7 @@ export function binanceSource(): DataSource {
 
 /* ------------------------------------------------------------------ XAU/USD spot index (keyless) */
 
-const BYBIT_IV: Record<Timeframe, string> = { '1w': 'W', '1d': 'D', '4h': '240', '1h': '60', '15m': '15', '5m': '5' };
+const BYBIT_IV: Record<Timeframe, string> = { '1w': 'W', '1d': 'D', '4h': '240', '1h': '60', '15m': '15', '5m': '5', '3m': '3', '1m': '1' };
 
 /** XAU/USD index candles (quoted in USDT). Binance XAUUSDT index price = weighted spot XAU/USD feeds; Bybit's index as backup. */
 async function xauIndexKlines(tf: Timeframe): Promise<{ bars: RawBar[]; via: string }> {
@@ -224,7 +224,19 @@ export function xauSource(): DataSource {
 
 /* ------------------------------------------------------------------ Twelve Data (needs a free key) */
 
-const TD_INTERVAL: Record<Timeframe, string> = { '1w': '1week', '1d': '1day', '4h': '4h', '1h': '1h', '15m': '15min', '5m': '5min' };
+const TD_INTERVAL: Record<Timeframe, string> = { '1w': '1week', '1d': '1day', '4h': '4h', '1h': '1h', '15m': '15min', '5m': '5min', '3m': '1min', '1m': '1min' };
+
+/** merge candles into fixed buckets of `sec` seconds (used for 3M on Twelve Data, which has no 3-minute interval) */
+export function aggregate(c: Candle[], sec: number): Candle[] {
+  const out: Candle[] = [];
+  for (const k of c) {
+    const t = k.time - (k.time % sec);
+    const last = out[out.length - 1];
+    if (last && last.time === t) { last.high = Math.max(last.high, k.high); last.low = Math.min(last.low, k.low); last.close = k.close; }
+    else out.push({ time: t, open: k.open, high: k.high, low: k.low, close: k.close });
+  }
+  return out;
+}
 
 /** Twelve Data XAU/USD. Free plan: 8 requests/min, 800/day – refreshes are throttled per timeframe. */
 export function twelveDataSource(apiKey: string): DataSource {
@@ -242,17 +254,18 @@ export function twelveDataSource(apiKey: string): DataSource {
         const r = await xauSource().fetchTf(tf);
         return { ...r, fallback: `Twelve Data: ${err.slice(0, 120)} – showing keyless XAU/USD instead` };
       }
-      const all: Candle[] = j.values.map((v) => ({
+      let all: Candle[] = j.values.map((v) => ({
         time: Math.floor(Date.parse(v.datetime.length <= 10 ? `${v.datetime}T00:00:00Z` : `${v.datetime.replace(' ', 'T')}Z`) / 1000),
         open: +v.open, high: +v.high, low: +v.low, close: +v.close,
       })).sort((a, b) => a.time - b.time);
+      if (tf === '3m') all = aggregate(all, 180);
       const last = all[all.length - 1];
       const live = last && last.time + TF_SECONDS[tf] > Date.now() / 1000 ? last : null;
       return { candles: live ? all.slice(0, -1) : all, live };
     },
     refreshSec(tf, selected) {
       if (selected) return 115;
-      return { '5m': 300, '15m': 300, '1h': 900, '4h': 1800, '1d': 3600, '1w': 3600 }[tf];
+      return { '1m': 300, '3m': 300, '5m': 300, '15m': 300, '1h': 900, '4h': 1800, '1d': 3600, '1w': 3600 }[tf];
     },
   };
 }

@@ -29,6 +29,8 @@ export interface StrategySetup {
   risk: RiskPlan | null;
   /** bar index of the most recent state change (c.length = live candle) */
   lastChangeIndex: number;
+  /** extra caution shown with the setup (e.g. price ran away from an untested FVG) */
+  note: string | null;
 }
 
 export interface StrategyContext {
@@ -92,7 +94,7 @@ export function detectSetups(c: Candle[], st: StructureResult, fvgs: Fvg[], ctx:
       choch: e, bos: null, fvg: null, fvgIsIfvg: false, originIndex: e.originIndex, originTime: c[e.originIndex].time,
       originPrice: e.originPrice, legExtreme: NaN, legExtremeIndex: e.breakIndex, triggerIndex: null, triggerTime: null,
       outcomeIndex: null, invalidatedIndex: null, invalidReason: null, sweep: findSweep(c, e, ctx.liquidity), risk: null,
-      lastChangeIndex: e.breakIndex,
+      lastChangeIndex: e.breakIndex, note: null,
     };
 
     const invalidate = (idx: number, reason: string) => {
@@ -153,7 +155,24 @@ export function detectSetups(c: Candle[], st: StructureResult, fvgs: Fvg[], ctx:
       if (!isLive && s * (k.close - far) < 0) { preInvalid = { idx: j, reason: 'FVG closed through before entry' }; break; }
     }
     setLegExtreme(setup, c, Math.min(n - 1, (trig ?? preInvalid?.idx ?? n) - 1));
-    setup.risk = planRisk(setup, c, fvgs, ctx);
+    // untested setup: the still-forming candle can extend the leg too (targets must lie beyond what price already traded)
+    if (trig === null && !preInvalid && live && (d === 'bullish' ? live.high > setup.legExtreme : live.low < setup.legExtreme)) {
+      setup.legExtreme = d === 'bullish' ? live.high : live.low;
+      setup.legExtremeIndex = n;
+    }
+    // targets are judged at the moment of entry (or now, if the FVG has not been retested yet)
+    const evalIdx = trig ?? (preInvalid ? preInvalid.idx : bars.length - 1);
+    setup.risk = planRisk(setup, c, fvgs, ctx, Math.min(evalIdx, n - 1), bars[evalIdx]?.time ?? c[n - 1].time);
+
+    if (trig === null && !preInvalid && setup.risk) {
+      const r = setup.risk;
+      const px = bars[bars.length - 1].close;
+      const tp1 = r.targets[0]?.price;
+      if (tp1 !== undefined && s * (tp1 - r.entry) > 0) {
+        const done = (s * (px - r.entry)) / (s * (tp1 - r.entry));
+        if (done >= 0.5) setup.note = `Price has already run ${fmtPrice(Math.abs(px - r.entry))} away from the entry (${Math.round(Math.min(done, 1) * 100)}% of the way to TP1) without retesting the FVG. Don't chase it – only valid if price comes back to ${fmtPrice(r.entry)}.`;
+      }
+    }
 
     if (preInvalid && trig === null) {
       invalidate(preInvalid.idx, preInvalid.reason);
@@ -219,22 +238,25 @@ function findSweep(c: Candle[], e: StructureEvent, liq: LiquidityLevel[]): Liqui
   return cands[0] ?? null;
 }
 
-function planRisk(setup: StrategySetup, c: Candle[], fvgs: Fvg[], ctx: StrategyContext): RiskPlan {
+/**
+ * Targets are evaluated at `evalTime` (entry bar, or now for an untested setup): only opposing liquidity that
+ * exists and is still unswept at that moment, and nothing inside the leg price has already traded (minTarget = leg extreme).
+ */
+function planRisk(setup: StrategySetup, c: Candle[], fvgs: Fvg[], ctx: StrategyContext, evalIdx: number, evalTime: number): RiskPlan {
   const d = setup.direction;
   const bos = setup.bos!;
   const fvg = setup.fvg!;
   const at = bos.breakIndex;
-  const atTime = c[at].time;
   const oppSide = d === 'bullish' ? 'buy' : 'sell';
-  const known = (l: LiquidityLevel) => l.side === oppSide && l.time <= atTime && (l.sweptTime === null || l.sweptTime > atTime);
+  const known = (l: LiquidityLevel) => l.side === oppSide && l.time <= evalTime && (l.sweptTime === null || l.sweptTime > evalTime);
   const toCand = (l: LiquidityLevel): TargetCandidate => ({ price: l.price, label: l.tf ? `${l.tf.toUpperCase()} ${l.label}` : l.label });
   const legLabel = d === 'bullish' ? 'Leg high (BOS swing – buy-side liquidity)' : 'Leg low (BOS swing – sell-side liquidity)';
   const tp1Candidates: TargetCandidate[] = [
     ...ctx.liquidity.filter(known).map(toCand),
     ...(isFinite(setup.legExtreme) ? [{ price: setup.legExtreme, label: legLabel }] : []),
   ];
-  const oppFvgs = fvgs.filter((f) => f.direction !== d && f.index < at
-    && (f.invertedIndex === null || f.invertedIndex > at) && (f.mitigatedIndex === null || f.mitigatedIndex > at));
+  const oppFvgs = fvgs.filter((f) => f.direction !== d && f.index + 1 <= evalIdx
+    && (f.invertedIndex === null || f.invertedIndex > evalIdx) && (f.mitigatedIndex === null || f.mitigatedIndex > evalIdx));
   const tp2Candidates: TargetCandidate[] = [
     ...oppFvgs.map((f) => ({ price: d === 'bullish' ? f.bottom : f.top, label: `${d === 'bullish' ? 'Bearish' : 'Bullish'} FVG ${fmtPrice(f.bottom)}–${fmtPrice(f.top)}` })),
     ...ctx.htfLiquidity.filter(known).map(toCand),
@@ -246,6 +268,6 @@ function planRisk(setup: StrategySetup, c: Candle[], fvgs: Fvg[], ctx: StrategyC
   return buildRiskPlan({
     direction: d, zoneTop: fvg.top, zoneBottom: fvg.bottom, originPrice: setup.originPrice, sweepPrice: setup.sweep?.price ?? null,
     atr: ctx.atr[at] ?? ctx.atr[ctx.atr.length - 1] ?? 0, slAtrMult: ctx.cfg.slAtrMult, minRR: ctx.cfg.minRR,
-    tp1Candidates, tp2Candidates, tp3Candidates,
+    tp1Candidates, tp2Candidates, tp3Candidates, minTarget: isFinite(setup.legExtreme) ? setup.legExtreme : null,
   });
 }

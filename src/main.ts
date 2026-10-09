@@ -6,17 +6,22 @@ import { DEFAULT_TOGGLES, GoldChart, type Toggles } from './ui/chart';
 import { confluenceCard, directionCard, fvgCard, liquidityCard, mtfCard, setupsCard } from './ui/dashboard';
 import { fmtDateTime } from './ui/format';
 
-interface Settings { source: SourceId; srcV?: number; apiKey: string; cfg: AnalysisConfig; tf: Timeframe; toggles: Toggles }
+interface Settings { source: SourceId; srcV?: number; tfV?: number; apiKey: string; cfg: AnalysisConfig; tf: Timeframe; toggles: Toggles }
 const KEY = 'gold-chart-assistant:v1';
 
 function loadSettings(): Settings {
-  const d: Settings = { source: 'xau', srcV: 2, apiKey: '', cfg: { ...DEFAULT_CONFIG }, tf: '1h', toggles: { ...DEFAULT_TOGGLES } };
+  const phone = window.innerWidth < 760;
+  // phones default to 3M (Anthoni's execution timeframe); desktop to 1H
+  const d: Settings = { source: 'xau', srcV: 2, tfV: 3, apiKey: '', cfg: { ...DEFAULT_CONFIG }, tf: phone ? '3m' : '1h', toggles: { ...DEFAULT_TOGGLES } };
   try {
     const s = JSON.parse(localStorage.getItem(KEY) ?? '{}');
     const out: Settings = { ...d, ...s, cfg: { ...d.cfg, ...(s.cfg ?? {}) }, toggles: { ...d.toggles, ...(s.toggles ?? {}) } };
     // v1 saved 'binance' (PAXG) as the default for everyone – move to real XAU/USD unless a Twelve Data key was set up
     if (s.srcV !== 2) { if (!(out.source === 'twelvedata' && out.apiKey)) out.source = 'xau'; out.srcV = 2; }
     if (!['xau', 'binance', 'twelvedata'].includes(out.source)) out.source = 'xau';
+    // one-off: when 3M/1M arrived, phones move to 3M once (you can switch back any time; the choice is remembered)
+    if (s.tfV !== 3) { if (phone) out.tf = '3m'; out.tfV = 3; }
+    if (!TIMEFRAMES.includes(out.tf)) out.tf = d.tf;
     return out;
   } catch { return d; }
 }
@@ -69,6 +74,8 @@ const TOGGLE_LABELS: Record<keyof Toggles, string> = { plan: 'Entry/SL/TP', stru
 function renderControls() {
   $('srcbar').innerHTML = `<span class="muted">Data:</span>${SRC_BUTTONS.map((b) => `<button data-src="${b.id}" class="${b.id === source.id ? 'on' : ''}">${b.label}${b.id === 'twelvedata' && !settings.apiKey ? ' 🔑' : ''}</button>`).join('')}`;
   $('tfs').innerHTML = TIMEFRAMES.map((tf) => `<button data-tf="${tf}" class="${tf === settings.tf ? 'on' : ''}">${TF_LABEL[tf]}</button>`).join('');
+  const on = $('tfs').querySelector('button.on') as HTMLElement | null;
+  if (on) $('tfs').scrollLeft = Math.max(0, on.offsetLeft - $('tfs').clientWidth / 2 + on.offsetWidth / 2);
   $('toggles').innerHTML = (Object.keys(TOGGLE_LABELS) as (keyof Toggles)[]).map((k) => `<label class="chip ${settings.toggles[k] ? 'on' : ''}"><input type="checkbox" data-toggle="${k}" ${settings.toggles[k] ? 'checked' : ''}/>${TOGGLE_LABELS[k]}</label>`).join('');
 }
 
@@ -84,8 +91,9 @@ function chartSetup(): SetupView | null {
   if (picked) return picked;
   const onTf = [...market.active, ...market.developing].filter((v) => v.tf === settings.tf);
   if (onTf.length) return onTf[0];
+  // otherwise only a recent complete setup (never draw old, played-out history as if it were live)
   const A = market.byTf[settings.tf];
-  return A ? [...A.setups].reverse().find((v) => v.setup.trioComplete) ?? null : null;
+  return A ? [...A.setups].reverse().find((v) => v.setup.trioComplete && v.fresh && v.setup.state !== 'invalidated') ?? null : null;
 }
 
 function render() {
@@ -193,7 +201,7 @@ $('settingsBtn').addEventListener('click', () => openSettings());
 function openSettings() {
   (form.elements.namedItem('source') as RadioNodeList).value = settings.source;
   (form.elements.namedItem('apiKey') as HTMLInputElement).value = settings.apiKey;
-  for (const k of ['swingLookback', 'slAtrMult', 'minRR', 'fvgMinAtr', 'setupMaxAgeBars'] as const) (form.elements.namedItem(k) as HTMLInputElement).value = String(settings.cfg[k]);
+  for (const k of ['swingLookback', 'ltfSwingLookback', 'slAtrMult', 'minRR', 'fvgMinAtr', 'setupMaxAgeBars'] as const) (form.elements.namedItem(k) as HTMLInputElement).value = String(settings.cfg[k]);
   if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
 }
 $('settingsCancel').addEventListener('click', () => { if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open'); });
@@ -204,6 +212,7 @@ form.addEventListener('submit', () => {
   if (settings.source === 'twelvedata' && !settings.apiKey) settings.source = 'xau';
   const num = (k: string, lo: number, hi: number, d: number) => { const v = Number((form.elements.namedItem(k) as HTMLInputElement).value); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
   settings.cfg.swingLookback = Math.round(num('swingLookback', 2, 15, 5));
+  settings.cfg.ltfSwingLookback = Math.round(num('ltfSwingLookback', 1, 15, 2));
   settings.cfg.slAtrMult = num('slAtrMult', 0, 2, 0.25);
   settings.cfg.minRR = num('minRR', 0, 10, 1);
   settings.cfg.fvgMinAtr = num('fvgMinAtr', 0, 2, 0.05);

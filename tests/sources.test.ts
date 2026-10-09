@@ -102,3 +102,16 @@ describe('XAU/USD keyless source', () => {
     expect(r.candles[0].close).toBe(1.5);
   });
 });
+
+describe('3M aggregation (Twelve Data has no 3-minute interval)', () => {
+  it('merges 1-minute candles into aligned 3-minute candles', async () => {
+    const { aggregate } = await import('../src/data/sources');
+    const t0 = 1_791_540_000; // divisible by 180
+    const one = [0, 1, 2, 3].map((i) => ({ time: t0 + i * 60, open: 10 + i, high: 11 + i, low: 9 + i, close: 10.5 + i }));
+    const three = aggregate(one, 180);
+    expect(three).toEqual([
+      { time: t0, open: 10, high: 13, low: 9, close: 12.5 },
+      { time: t0 + 180, open: 13, high: 14, low: 12, close: 13.5 },
+    ]);
+  });
+});

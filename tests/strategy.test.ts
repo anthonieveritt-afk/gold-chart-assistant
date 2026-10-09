@@ -152,3 +152,73 @@ describe('strategy negative cases', () => {
     expect(s.risk!.targets[0].price).toBeLessThan(s.risk!.entry);
   });
 });
+
+describe('targets never sit inside the move price already made (Anthoni 1H report, 9 Oct)', () => {
+  /** a buy-side level that existed before the BOS and was taken by the rally afterwards (e.g. an old swing high / PDH) */
+  function withTakenLevel(c: Candle[], price: number) {
+    const swept = c.find((k, i) => i > 30 && k.high > price)!;
+    const a = atr(c);
+    const swings = findSwings(c, cfg.swingLookback);
+    const st = analyseStructure(c, swings);
+    const fvgs = detectFvgs(c, a, cfg.fvgMinAtr);
+    const liq = [...swingLiquidity(c, swings, a[a.length - 1], cfg.eqTolAtr),
+      { id: 'pdh', side: 'buy' as const, kind: 'PDH' as const, label: 'PDH', price, time: c[0].time, sweptTime: swept.time }];
+    return { c, setups: detectSetups(c, st, fvgs, { cfg, atr: a, liquidity: liq, htfLiquidity: [] }) };
+  }
+
+  it('untested long: TP1 is at/above the leg high and above current price, never a level already swept', () => {
+    const { c, setups } = withTakenLevel(fromPath(110, [...DOWNTREND, ...CHOCH_LEG, ...PULLBACK, ...BOS_LEG, ...RALLY, [116.5, 2]]), 112);
+    const s = setups.find((x) => x.direction === 'bullish')!;
+    expect(s.state).toBe('waiting_retest');
+    const r = s.risk!;
+    const price = c[c.length - 1].close;
+    const legHigh = Math.max(...c.slice(s.originIndex).map((k) => k.high));
+    for (const t of r.targets) {
+      expect(t.price).toBeGreaterThan(r.entry);
+      expect(t.price).toBeGreaterThanOrEqual(legHigh - 1e-9);
+      expect(t.price).toBeGreaterThan(price);
+      expect(t.rr).toBeGreaterThan(0);
+    }
+    expect(r.targets.some((t) => Math.abs(t.price - 112) < 1e-9)).toBe(false);
+    // price ran most of the way to TP1 without a retest -> explicit "don't chase" note
+    expect(s.note).toMatch(/Don't chase/);
+  });
+
+  it('the live candle extending the leg pushes TP1 beyond it', () => {
+    const c = fromPath(110, [...DOWNTREND, ...CHOCH_LEG, ...PULLBACK, ...BOS_LEG, ...RALLY]);
+    const last = c[c.length - 1];
+    const live: Candle = { time: last.time + 3600, open: 118, high: 121, low: 117.8, close: 120.5 };
+    const s = run(c, live).setups.find((x) => x.direction === 'bullish')!;
+    expect(s.state).toBe('waiting_retest');
+    expect(s.risk!.targets[0].price).toBeGreaterThanOrEqual(121);
+  });
+
+  it('triggered long: liquidity swept before the entry is not used as TP1', () => {
+    const { setups } = withTakenLevel(fullSequence(), 112);
+    const s = setups.find((x) => x.direction === 'bullish')!;
+    expect(s.state).toBe('triggered');
+    expect(s.risk!.targets[0].price).toBeCloseTo(118.5, 5);
+    expect(s.note).toBeNull();
+  });
+
+  it('bearish mirror: short targets are below the leg low and below current price', () => {
+    const base = fromPath(110, [...DOWNTREND, ...CHOCH_LEG, ...PULLBACK, ...BOS_LEG, ...RALLY, [116.5, 2]]);
+    const mirror = base.map((k) => ({ time: k.time, open: 300 - k.open, close: 300 - k.close, high: 300 - k.low, low: 300 - k.high }));
+    const { c, setups } = withTakenLevelBear(mirror, 188);
+    const s = setups.find((x) => x.direction === 'bearish')!;
+    const price = c[c.length - 1].close;
+    for (const t of s.risk!.targets) { expect(t.price).toBeLessThan(price); expect(t.price).toBeLessThan(s.risk!.entry); }
+    expect(s.risk!.targets.some((t) => Math.abs(t.price - 188) < 1e-9)).toBe(false);
+  });
+
+  function withTakenLevelBear(c: Candle[], price: number) {
+    const swept = c.find((k, i) => i > 30 && k.low < price)!;
+    const a = atr(c);
+    const swings = findSwings(c, cfg.swingLookback);
+    const st = analyseStructure(c, swings);
+    const fvgs = detectFvgs(c, a, cfg.fvgMinAtr);
+    const liq = [...swingLiquidity(c, swings, a[a.length - 1], cfg.eqTolAtr),
+      { id: 'pdl', side: 'sell' as const, kind: 'PDL' as const, label: 'PDL', price, time: c[0].time, sweptTime: swept.time }];
+    return { c, setups: detectSetups(c, st, fvgs, { cfg, atr: a, liquidity: liq, htfLiquidity: [] }) };
+  }
+});

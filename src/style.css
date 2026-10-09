@@ -96,5 +96,5 @@ menu { display: flex; justify-content: flex-end; gap: 8px; padding: 0; } .primar
   .dash { grid-template-columns: 1fr; padding: 8px 8px 14px; } .dash .col:nth-child(2) { order: -1; grid-row: auto; }
   #chartWrap { margin: 8px 8px 0; } #chart { height: 52vh; min-height: 320px; }
   .tfs, .toggles, .srcbar, .status { padding-left: 8px; padding-right: 8px; } .legend { padding: 6px 8px; }
-  .top-right #updated { display: none; } .steps { grid-template-columns: repeat(2, 1fr); }
+  .top-right #updated { display: none; } .tfs button { min-width: 42px; padding: 6px 8px; } .steps { grid-template-columns: repeat(2, 1fr); }
 }

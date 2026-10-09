@@ -1,11 +1,13 @@
-export type Timeframe = '1w' | '1d' | '4h' | '1h' | '15m' | '5m';
-export const TIMEFRAMES: Timeframe[] = ['1w', '1d', '4h', '1h', '15m', '5m'];
+export type Timeframe = '1w' | '1d' | '4h' | '1h' | '15m' | '5m' | '3m' | '1m';
+export const TIMEFRAMES: Timeframe[] = ['1w', '1d', '4h', '1h', '15m', '5m', '3m', '1m'];
 export const TF_SECONDS: Record<Timeframe, number> = {
-  '1w': 604800, '1d': 86400, '4h': 14400, '1h': 3600, '15m': 900, '5m': 300,
+  '1w': 604800, '1d': 86400, '4h': 14400, '1h': 3600, '15m': 900, '5m': 300, '3m': 180, '1m': 60,
 };
 export const TF_LABEL: Record<Timeframe, string> = {
-  '1w': '1W', '1d': '1D', '4h': '4H', '1h': '1H', '15m': '15M', '5m': '5M',
+  '1w': '1W', '1d': '1D', '4h': '4H', '1h': '1H', '15m': '15M', '5m': '5M', '3m': '3M', '1m': '1M',
 };
+/** scalping timeframes (≤ 5M) use their own, shorter swing lookback */
+export const isLowTf = (tf: Timeframe) => TF_SECONDS[tf] <= 300;
 /** Timeframes strictly higher than tf, nearest first. */
 export function higherTimeframes(tf: Timeframe): Timeframe[] {
   const i = TIMEFRAMES.indexOf(tf);
@@ -95,6 +97,8 @@ export interface LiquidityLevel {
 
 export interface AnalysisConfig {
   swingLookback: number;
+  /** swing lookback for 5M / 3M / 1M */
+  ltfSwingLookback: number;
   /** stop buffer as multiple of ATR(14) */
   slAtrMult: number;
   /** minimum TP1 reward:risk to count as a valid entry */
@@ -109,6 +113,7 @@ export interface AnalysisConfig {
 
 export const DEFAULT_CONFIG: AnalysisConfig = {
   swingLookback: 5,
+  ltfSwingLookback: 2,
   slAtrMult: 0.25,
   minRR: 1,
   fvgMinAtr: 0.05,
