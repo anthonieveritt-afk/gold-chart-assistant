@@ -13,11 +13,18 @@
     <nav class="top-right tabs"><a href="./" class="tab">Charts</a><a href="./paper.html" class="tab on">Paper Bot</a></nav>
   </header>
   <div class="paper-banner">PAPER TRADING – NOT REAL MONEY. Simulated trades with a virtual account on public XAU/USD data. No broker is connected and no real orders are placed.</div>
+  <div class="replay-banner" id="replayBanner" hidden>REPLAY – PAPER, NOT REAL MONEY. Re-playing last week's candles through the bot's rules.</div>
+  <section class="pb-mode"><button id="modeLive" class="on">Live bot</button><button id="modeReplay">▶ Replay last week</button></section>
+  <section class="pb-replay card" id="replayCtl" hidden>
+    <div class="rc-row"><label>Config <select id="rpCfg"></select></label>
+    <button id="rpPlay">▶ Play</button><span class="speeds"><button data-s="1" class="on">1x</button><button data-s="10">10x</button><button data-s="60">60x</button></span><button id="rpRestart">⟲</button></div>
+    <input type="range" id="rpSeek" min="0" max="0" value="0" /><div id="rpTime" class="muted"></div>
+  </section>
   <main class="pb">
     <section class="pb-kpis" id="kpis"></section>
     <section class="card"><h3>3M chart · open / pending trade</h3><div id="pbChart" class="pb-chart"></div><div id="tradeBox" class="muted"></div></section>
     <section class="card"><h3>Virtual equity</h3><div id="pbEquity" class="pb-eq"></div></section>
-    <section class="card"><h3>Closed trades</h3><div id="closed" class="tbl"></div></section>
+    <section class="card"><h3>Trades &amp; P&amp;L</h3><div id="closed" class="tbl"></div></section>
     <section class="card"><h3>Journal</h3><div id="journal" class="tbl"></div></section>
     <section class="card muted" id="cfg"></section>
   </main>
