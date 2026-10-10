@@ -98,3 +98,20 @@ menu { display: flex; justify-content: flex-end; gap: 8px; padding: 0; } .primar
   .tfs, .toggles, .srcbar, .status { padding-left: 8px; padding-right: 8px; } .legend { padding: 6px 8px; }
   .top-right #updated { display: none; } .tfs button { min-width: 42px; padding: 6px 8px; } .steps { grid-template-columns: repeat(2, 1fr); }
 }
+/* ---- Paper Bot tab ---- */
+.tabs { gap: 4px; }
+.tab { color: var(--muted); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; font-size: 12.5px; white-space: nowrap; }
+.tab.on { background: var(--gold); color: #1d1600; border-color: var(--gold); font-weight: 700; }
+.paper-banner { background: #3b0d0d; color: #ffcdd2; font-weight: 700; text-align: center; font-size: 13px; padding: 8px 14px; border-bottom: 1px solid #5c1a1a; letter-spacing: .02em; }
+.pb { padding: 10px 14px; display: grid; gap: 12px; max-width: 1200px; margin: 0 auto; }
+.pb .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.pb h3 { margin: 0 0 8px; font-size: 14px; }
+.pb-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.kpi small { display: block; color: var(--muted); font-size: 11.5px; } .kpi b { font-size: 17px; }
+.pos { color: #4dd0b1; } .neg { color: #ff8a80; }
+.pb-chart { height: 46vh; min-height: 300px; } .pb-eq { height: 220px; }
+#tradeBox { margin-top: 8px; font-size: 13px; }
+.tbl { overflow-x: auto; } .tbl table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+.tbl th, .tbl td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; } .nowrap { white-space: nowrap; }
+.err-t { color: #ff8a80; }

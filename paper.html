@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1115" />
+  <title>Paper Bot – PAPER TRADING, NOT REAL MONEY</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%230f1115'/><path d='M10 46h44l-8-14H18z' fill='%23ffd54f'/><path d='M18 30h28l-6-10H24z' fill='%23ffb300'/></svg>" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="logo">Au</span><div><h1>Gold Paper Bot</h1><small id="pbStatus">loading…</small></div></div>
+    <nav class="top-right tabs"><a href="./" class="tab">Charts</a><a href="./paper.html" class="tab on">Paper Bot</a></nav>
+  </header>
+  <div class="paper-banner">PAPER TRADING – NOT REAL MONEY. Simulated trades with a virtual account on public XAU/USD data. No broker is connected and no real orders are placed.</div>
+  <main class="pb">
+    <section class="pb-kpis" id="kpis"></section>
+    <section class="card"><h3>3M chart · open / pending trade</h3><div id="pbChart" class="pb-chart"></div><div id="tradeBox" class="muted"></div></section>
+    <section class="card"><h3>Virtual equity</h3><div id="pbEquity" class="pb-eq"></div></section>
+    <section class="card"><h3>Closed trades</h3><div id="closed" class="tbl"></div></section>
+    <section class="card"><h3>Journal</h3><div id="journal" class="tbl"></div></section>
+    <section class="card muted" id="cfg"></section>
+  </main>
+  <footer class="foot"><p><b>PAPER TRADING – NOT REAL MONEY.</b> Results are simulated with spread/slippage assumptions and can differ from a real account. Not financial advice. Times are UK (Europe/London).</p></footer>
+  <script type="module" src="/src/paper.ts"></script>
+</body>
+</html>
