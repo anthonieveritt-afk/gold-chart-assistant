@@ -109,12 +109,15 @@ async function loadLive() {
     drawLevels(t ? { dir: t.direction === 'bullish' ? 1 : -1, entry: s.open ? s.open.fillPrice : t.entry, stop: t.stop, curStop: s.open?.currentStop, tps: t.targets.map((g) => g.price) } : null, !s.open && !!s.pending,
       open ? `Entry · ${usd(open.unreal ?? 0, true)}` : '');
     $('tradeBox').innerHTML = s.open ? `<b>Open ${open!.dir > 0 ? 'LONG' : 'SHORT'}</b> · unrealised <b class="${cls(open!.unreal ?? 0)}">${usd(open!.unreal ?? 0, true)}</b> (${rr((open!.unreal ?? 0) / open!.riskUsd)}) · ${esc(s.open.reasons.join(' · '))}`
-      : s.pending ? `<b>Pending ${s.pending.direction === 'bullish' ? 'BUY' : 'SELL'} limit</b> @ ${px(s.pending.entry)} until ${uk(s.pending.expiresAt)}` : 'No open or pending trade – waiting for CHoCH + BOS + FVG with HTF and liquidity confluence.';
+      : s.pending ? `<b>Pending ${s.pending.direction === 'bullish' ? 'BUY' : 'SELL'} limit</b> @ ${px(s.pending.entry)} until ${uk(s.pending.expiresAt)}` : (s.config as { strategy?: unknown }).strategy ? 'No open trade – Strategy D waiting for a POI tap, then CHoCH + FVG/BOS on M5.' : 'No open or pending trade – waiting for CHoCH + BOS + FVG with HTF and liquidity confluence.';
     eqLine.setData(dedupe(s.equityCurve.map((p) => ({ time: local(p.time), value: p.equity }))));
     eqChart.timeScale().fitContent();
     $('journal').innerHTML = s.journal.length ? `<table>${s.journal.map((j) => `<tr><td class="nowrap">${uk(j.time)}</td><td>${esc(j.kind)}</td><td>${esc(j.text)}</td></tr>`).join('')}</table>` : '<p class="muted">Journal is empty.</p>';
     const c = s.config;
-    $('cfg').innerHTML = `Live settings: start ${usd(c.startBalance)} virtual · risk ${c.riskPct}% per trade · entry TF ${String(c.entryTf).toUpperCase()} · spread $${c.spread} · slippage $${c.slippage} · exits 1/3 at TP1/TP2/TP3, SL to breakeven after TP1 · max one trade.`;
+    const sg = (c as { strategy?: { name: string; poi?: { windowMin: number } | null } | null }).strategy;
+    $('cfg').innerHTML = sg
+      ? `<b>Strategy D</b> (${esc(sg.name)}) · start ${usd(c.startBalance)} virtual · risk ${c.riskPct}% per trade · entry TF ${String(c.entryTf).toUpperCase()} · market entry after price taps a POI (1H/4H order block or FVG, or swept liquidity) then CHoCH + FVG/BOS · stop at swing · single target at 2R · spread $${c.spread} · slippage $${c.slippage} · max one trade.`
+      : `Live settings: start ${usd(c.startBalance)} virtual · risk ${c.riskPct}% per trade · entry TF ${String(c.entryTf).toUpperCase()} · spread $${c.spread} · slippage $${c.slippage} · exits 1/3 at TP1/TP2/TP3, SL to breakeven after TP1 · max one trade.`;
     if (firstLive) { chart.timeScale().fitContent(); firstLive = false; }
   } catch (e) { $('pbStatus').innerHTML = `<span class="err-t">Couldn't load the bot snapshot (${esc((e as Error).message)})</span>`; }
 }
