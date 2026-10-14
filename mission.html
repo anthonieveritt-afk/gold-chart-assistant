@@ -1,0 +1,66 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0f17"><title>XAUUSD Mission Control</title>
+<style>
+:root{--bg:#0b0f17;--card:#141a26;--line:#222b3b;--txt:#e6ebf5;--mut:#8592a8;--g:#22c55e;--r:#ef4444;--n:#64748b;--gold:#f5c451}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:15px -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;padding:env(safe-area-inset-top) 12px 24px}
+header{padding:14px 2px 10px}h1{font-size:18px;margin:0;letter-spacing:.5px}h1 span{color:var(--gold)}
+.price{font-size:34px;font-weight:700;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+.meta{color:var(--mut);font-size:12.5px}.warn{background:#3b1d1d;border:1px solid #7f1d1d;color:#fecaca;border-radius:10px;padding:8px 10px;margin:10px 0;font-size:13px;display:none}
+.paused{background:#1f2937;border-color:#374151;color:#d1d5db}
+.sum{display:flex;gap:8px;margin:10px 0 4px}.sum div{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px;text-align:center}
+.sum b{display:block;font-size:20px}.sum small{color:var(--mut);font-size:11px}
+.align{border-radius:12px;padding:10px;text-align:center;font-weight:700;margin:8px 0 12px;font-size:16px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 10px 12px}
+.card.wide{grid-column:span 2}.card.wide .lights{grid-template-columns:1fr 1fr}.top{display:flex;justify-content:space-between;align-items:baseline}
+.tf{font-weight:700;font-size:16px}.dl{font-size:12px;font-weight:700}
+svg{display:block;margin:2px auto 0;width:100%;max-width:150px}
+.lights{display:grid;grid-template-columns:1fr;gap:4px;margin-top:6px}
+.l{display:flex;align-items:center;gap:6px;background:#0f1520;border-radius:8px;padding:5px 6px;font-size:11.5px}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;background:#2a3344}
+.dot.g{background:var(--g);box-shadow:0 0 8px var(--g)}.dot.r{background:var(--r);box-shadow:0 0 8px var(--r)}
+.l small{color:var(--mut);margin-left:auto;font-size:10.5px;white-space:nowrap}
+footer{color:var(--mut);font-size:11px;margin-top:16px;line-height:1.5}
+</style></head><body>
+<header><h1><span>XAU/USD</span> Mission Control</h1>
+<div class="price" id="price">—</div><div class="meta" id="meta">Loading…</div>
+<div class="warn" id="warn"></div></header>
+<div class="align" id="align"></div>
+<div class="sum"><div><b id="nb" style="color:var(--g)">-</b><small>Bullish</small></div><div><b id="nr" style="color:var(--r)">-</b><small>Bearish</small></div><div><b id="nn">-</b><small>Neutral</small></div></div>
+<div class="grid" id="grid"></div>
+<footer>Lights: green = bullish, red = bearish when the event happened within the last 3 closed candles of that timeframe; grey otherwise (age shown).
+Direction = market structure trend after the last BOS/CHoCH (swing-based, same rules as the gold bots). ▲▲ = clean higher highs &amp; higher lows. 30M is built from 15M candles.
+Data: Binance XAU index (USDT→USD), closed candles only; may differ slightly from your broker's price. Paper analysis only, not advice.</footer>
+<script>
+const DATA=location.search.includes("local")?"data.json":'https://raw.githubusercontent.com/anthonieveritt-afk/gold-chart-assistant/mission-data/data.json';
+const C={bullish:'#22c55e',bearish:'#ef4444',neutral:'#64748b'};
+const uk=t=>new Date(t*1000).toLocaleTimeString('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'});
+function dial(dir,str){const a=dir==='bullish'?50:dir==='bearish'?-50:0;const col=C[dir];
+return `<svg viewBox="0 0 120 72"><path d="M12 64 A48 48 0 0 1 108 64" fill="none" stroke="#1f2937" stroke-width="10" stroke-linecap="round"/>
+<path d="M12 64 A48 48 0 0 1 60 16" fill="none" stroke="#ef4444" stroke-width="10" opacity="${dir==='bearish'?.9:.18}"/><path d="M60 16 A48 48 0 0 1 108 64" fill="none" stroke="#22c55e" stroke-width="10" opacity="${dir==='bullish'?.9:.18}"/>
+<g transform="rotate(${a} 60 64)"><line x1="60" y1="64" x2="60" y2="22" stroke="${col}" stroke-width="5" stroke-linecap="round"/><polygon points="60,12 51,27 69,27" fill="${col}"/></g>
+<circle cx="60" cy="64" r="7" fill="${col}"/></svg>`}
+function light(name,e,R){const on=e&&e.ago<R;const cls=on?(e.dir==='bullish'?'g':'r'):'';
+const age=e?`${e.dir==='bullish'?'▲':'▼'} ${e.ago===0?'last bar':e.ago+' ago'}`:'none';return `<div class="l"><span class="dot ${cls}"></span>${name}<small>${age}</small></div>`}
+async function load(){try{const r=await fetch(DATA+'?t='+Date.now(),{cache:'no-store'});const d=await r.json();render(d)}catch(e){document.getElementById('meta').textContent='Could not load data – retrying…'}}
+function render(d){const now=Date.now()/1000;
+document.getElementById('price').textContent='$'+d.price.toFixed(2);
+document.getElementById('meta').textContent=`Last candle ${uk(d.lastCandleClose)} UK · updated ${uk(d.generated)} UK · ${d.source}`;
+const w=document.getElementById('warn');const h=+new Date().toLocaleString('en-GB',{timeZone:'Europe/London',hour:'2-digit',hour12:false});
+const day=new Date().toLocaleString('en-GB',{timeZone:'Europe/London',weekday:'short'});
+const age=(now-d.lastCandleClose)/60;
+if(age>5){w.style.display='block';const closed=(h===22)||day==='Sat'||(day==='Sun'&&h<23)||(day==='Fri'&&h>=22);
+w.className='warn'+(closed?' paused':'');w.textContent=closed?`Market paused (gold closes 22:00–23:00 UK and at weekends). Data from ${uk(d.lastCandleClose)} UK.`:`⚠ DATA STALE – last candle ${Math.round(age)} min old. Don't rely on this screen.`}else w.style.display='none';
+let nb=0,nr=0,nn=0;const g=document.getElementById('grid');g.innerHTML='';
+d.tfs.forEach((t,i)=>{if(t.dir==='bullish')nb++;else if(t.dir==='bearish')nr++;else nn++;
+const lab=t.dir==='bullish'?(t.strength>1?'BULLISH ▲▲':'BULLISH ▲'):t.dir==='bearish'?(t.strength>1?'BEARISH ▼▼':'BEARISH ▼'):'NEUTRAL ►';
+g.insertAdjacentHTML('beforeend',`<div class="card${i===0?' wide':''}"><div class="top"><span class="tf">${t.label}</span><span class="dl" style="color:${C[t.dir]}">${lab}</span></div>
+${dial(t.dir,t.strength)}<div class="lights">${light('CHoCH',t.choch,d.recentBars)}${light('BOS',t.bos,d.recentBars)}${light('FVG→IFVG',t.ifvg,d.recentBars)}${light('Engulf',t.engulf,d.recentBars)}</div></div>`)});
+['nb','nr','nn'].forEach((k,i)=>document.getElementById(k).textContent=[nb,nr,nn][i]);
+const a=document.getElementById('align');const n=d.tfs.length;const top=Math.max(nb,nr);const side=nb>=nr?'bullish':'bearish';
+a.textContent=`${top} of ${n} ${side}`+(top===n?' – fully aligned':top>=5?' – mostly aligned':' – mixed, take care');
+a.style.background=top>=5?(side==='bullish'?'#14321f':'#3b1515'):'#1f2937';a.style.color=top>=5?C[side]:'#e5e7eb'}
+load();setInterval(load,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
+</script></body></html>
