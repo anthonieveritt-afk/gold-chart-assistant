@@ -22,6 +22,7 @@ svg{display:block;margin:2px auto 0;width:100%;max-width:150px}
 .dot{width:12px;height:12px;border-radius:50%;flex:none;background:#2a3344}
 .dot.g{background:var(--g);box-shadow:0 0 8px var(--g)}.dot.r{background:var(--r);box-shadow:0 0 8px var(--r)}
 .l small{color:var(--mut);margin-left:auto;font-size:10.5px;white-space:nowrap}
+.inst{margin-top:8px}.ir{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-top:1px solid var(--line);font-size:13px}.ir:first-child{border-top:0}.ir b{font-variant-numeric:tabular-nums}.ir small{display:block;color:var(--mut);font-size:11px}
 footer{color:var(--mut);font-size:11px;margin-top:16px;line-height:1.5}
 </style></head><body>
 <header><h1><span>XAU/USD</span> Mission Control</h1>
@@ -30,9 +31,10 @@ footer{color:var(--mut);font-size:11px;margin-top:16px;line-height:1.5}
 <div class="align" id="align"></div>
 <div class="sum"><div><b id="nb" style="color:var(--g)">-</b><small>Bullish</small></div><div><b id="nr" style="color:var(--r)">-</b><small>Bearish</small></div><div><b id="nn">-</b><small>Neutral</small></div></div>
 <div class="grid" id="grid"></div>
+<div class="card inst" id="inst"><div class="top"><span class="tf">Institutional context</span><span class="dl" id="instd" style="color:var(--mut)"></span></div><div id="instb" class="meta" style="margin-top:6px">Loading…</div></div>
 <footer>Lights: green = bullish, red = bearish when the event happened within the last 3 closed candles of that timeframe; grey otherwise (age shown).
 Direction = market structure trend after the last BOS/CHoCH (swing-based, same rules as the gold bots). ▲▲ = clean higher highs &amp; higher lows. 30M is built from 15M candles.
-Data: Binance XAU index (USDT→USD), closed candles only; may differ slightly from your broker's price. Paper analysis only, not advice.</footer>
+Data: Binance XAU index (USDT→USD), closed candles only; may differ slightly from your broker's price. Institutional card: CFTC Commitments of Traders (Tuesday positions, published Friday) and SPDR GLD holdings (daily, previous US close); context only, not a timing signal. Paper analysis only, not advice.</footer>
 <script>
 const DATA=location.search.includes("local")?"data.json":'https://raw.githubusercontent.com/anthonieveritt-afk/gold-chart-assistant/mission-data/data.json';
 const C={bullish:'#22c55e',bearish:'#ef4444',neutral:'#64748b'};
@@ -63,4 +65,15 @@ const a=document.getElementById('align');const n=d.tfs.length;const top=Math.max
 a.textContent=`${top} of ${n} ${side}`+(top===n?' – fully aligned':top>=5?' – mostly aligned':' – mixed, take care');
 a.style.background=top>=5?(side==='bullish'?'#14321f':'#3b1515'):'#1f2937';a.style.color=top>=5?C[side]:'#e5e7eb'}
 load();setInterval(load,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
+const fmt=n=>(n>0?'+':'')+n.toLocaleString('en-GB');const dcol=n=>n>0?'var(--g)':n<0?'var(--r)':'var(--mut)';
+async function loadInst(){try{const r=await fetch(DATA.replace('data.json','inst.json')+'?t='+Date.now(),{cache:'no-store'});const d=await r.json();let h='';
+if(d.cot){const c=d.cot;const lab=c.pct1y>=80?'crowded long':c.pct1y<=20?'light / washed out':'mid-range';
+h+=`<div class="ir"><span>Hedge funds net long (CFTC)<small>COMEX gold, managed money · as of ${c.date}${c.stale?' · stale':''}</small></span><b>${c.net.toLocaleString('en-GB')}</b></div>
+<div class="ir"><span>Weekly change</span><b style="color:${dcol(c.chg)}">${fmt(c.chg)}</b></div>
+<div class="ir"><span>1-year percentile<small>${lab}</small></span><b>${c.pct1y}%</b></div>`}
+if(d.gld){const g=d.gld;h+=`<div class="ir"><span>GLD gold holdings<small>SPDR ETF · as of ${g.date}${g.stale?' · stale':''}</small></span><b>${g.tonnes.toFixed(1)} t</b></div>
+<div class="ir"><span>Change 1d / 5d / 20d</span><b><span style="color:${dcol(g.d1)}">${fmt(g.d1)}</span> / <span style="color:${dcol(g.d5)}">${fmt(g.d5)}</span> / <span style="color:${dcol(g.d20)}">${fmt(g.d20)}</span> t</b></div>`}
+document.getElementById('instb').innerHTML=h||'No data yet';document.getElementById('instd').textContent='weekly / daily bias';
+}catch(e){document.getElementById('instb').textContent='Institutional data unavailable'}}
+loadInst();setInterval(loadInst,3600000);
 </script></body></html>
